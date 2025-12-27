@@ -11,6 +11,8 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/PjoterC/btp_api/graph"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
@@ -21,6 +23,25 @@ func main() {
 	if port == "" {
 		port = defaultPort
 	}
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		dbURL = "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable"
+	}
+
+	db, err := sqlx.Connect("postgres", dbURL)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	db.MustExec(`
+		CREATE TABLE IF NOT EXISTS wallets (
+			address TEXT PRIMARY KEY,
+			balance BIGINT NOT NULL CHECK (balance >= 0)
+		);
+		INSERT INTO wallets (address, balance) 
+		VALUES ('0x0000000000000000000000000000000000000000', 1000000)
+		ON CONFLICT DO NOTHING;
+	`)
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}}))
 

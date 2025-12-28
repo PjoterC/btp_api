@@ -7,26 +7,66 @@ package graph
 
 import (
 	"context"
-	"fmt"
-
-	"github.com/PjoterC/btp_api/graph/model"
+	"database/sql"
+	"errors"
 )
 
-// CreateTodo is the resolver for the createTodo field.
-func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
-}
+// Transfer is the resolver for the transfer field.
+func (r *mutationResolver) Transfer(ctx context.Context, fromAddress string, toAddress string, amount int32) (int32, error) {
+	if amount <= 0 {
+		return 0, errors.New("amount must be positive")
+	}
 
-// Todos is the resolver for the todos field.
-func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: Todos - todos"))
+	tx, err := r.DB.Beginx()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	// 1. Lock the sender row and get balance
+	var fromBalance int32
+	err = tx.Get(&fromBalance, "SELECT balance FROM wallets WHERE address = $1 FOR UPDATE", fromAddress)
+	if err != nil {
+		return 0, errors.New("sender wallet not found")
+	}
+
+	// 2. Check sufficiency
+	if fromBalance < amount {
+		return 0, errors.New("insufficient balance")
+	}
+
+	// 3. Ensure 'to' wallet exists — return error if missing
+	var toBalance int32
+	err = tx.Get(&toBalance, "SELECT balance FROM wallets WHERE address = $1 FOR UPDATE", toAddress)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, errors.New("recipient wallet not found")
+		}
+		return 0, err
+	}
+
+	// 4. Update balances
+	newSenderBalance := fromBalance - amount
+	_, err = tx.Exec("UPDATE wallets SET balance = balance - $1 WHERE address = $2", amount, fromAddress)
+	if err != nil {
+		return 0, err
+	}
+	_, err = tx.Exec("UPDATE wallets SET balance = balance + $1 WHERE address = $2", amount, toAddress)
+	if err != nil {
+		return 0, err
+	}
+
+	return newSenderBalance, tx.Commit()
 }
 
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
-// Query returns QueryResolver implementation.
-func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
-
 type mutationResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.

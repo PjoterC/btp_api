@@ -18,6 +18,10 @@ func ResetTestWallets() {
 		INSERT INTO wallets (address, balance) 
 		VALUES ('testDestA', 0)
 		ON CONFLICT (address) DO UPDATE SET balance = EXCLUDED.balance;
+
+		INSERT INTO wallets (address, balance) 
+		VALUES ('testSourceB', 10)
+		ON CONFLICT (address) DO UPDATE SET balance = EXCLUDED.balance;
 	`)
 
 	println("Test wallets reset")

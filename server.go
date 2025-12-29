@@ -36,7 +36,7 @@ func main() {
 	db.MustExec(`
 		CREATE TABLE IF NOT EXISTS wallets (
 			address TEXT PRIMARY KEY,
-			balance BIGINT NOT NULL CHECK (balance >= 0)
+			balance INTEGER NOT NULL CHECK (balance >= 0)
 		);
 		INSERT INTO wallets (address, balance) 
 		VALUES ('0x0000000000000000000000000000000000000000', 1000000)

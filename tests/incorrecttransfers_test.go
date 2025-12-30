@@ -7,18 +7,14 @@ import (
 	"time"
 
 	"github.com/PjoterC/btp_api/graph"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
 // The test attempts to perform two simultaneous transfers that together exceed the source wallet's balance.
 func TestSimultanousOverBalance(t *testing.T) {
 	ResetTestWallets()
-	db, err := sqlx.Open("postgres", "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable")
-	if err != nil {
-		t.Fatalf("Failed to connect to database: %v", err)
-	}
-	defer db.Close()
+	db, cleanup := SetupDB(t)
+	defer cleanup()
 	r := &graph.Resolver{DB: db}
 	resolver := r.Mutation()
 
@@ -62,11 +58,8 @@ func TestSimultanousOverBalance(t *testing.T) {
 // The test performs three transfers in parallel, with one of them potetially fauling due to insufficient funds - an implementation of the example from the task sheet.
 func TestExampleRaceCondition(t *testing.T) {
 	ResetTestWallets()
-	db, err := sqlx.Open("postgres", "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable")
-	if err != nil {
-		t.Fatalf("Failed to connect to database: %v", err)
-	}
-	defer db.Close()
+	db, cleanup := SetupDB(t)
+	defer cleanup()
 
 	r := &graph.Resolver{DB: db}
 	resolver := r.Mutation()
@@ -127,11 +120,9 @@ func TestExampleRaceCondition(t *testing.T) {
 // The test attempts to perform transfers involving non-existing wallets
 func TestNonExistingWallets(t *testing.T) {
 	ResetTestWallets()
-	db, err := sqlx.Open("postgres", "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable")
-	if err != nil {
-		t.Fatalf("Failed to connect to database: %v", err)
-	}
-	defer db.Close()
+	db, cleanup := SetupDB(t)
+	defer cleanup()
+
 	r := &graph.Resolver{DB: db}
 	resolver := r.Mutation()
 
@@ -177,10 +168,8 @@ func TestNonExistingWallets(t *testing.T) {
 // The test attempts to perform a transfer with a negative amount
 func TestNegativeAmount(t *testing.T) {
 	ResetTestWallets()
-	db, dberr := sqlx.Open("postgres", "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable")
-	if dberr != nil {
-		t.Fatalf("Failed to connect to database: %v", dberr)
-	}
+	db, cleanup := SetupDB(t)
+	defer cleanup()
 	r := &graph.Resolver{DB: db}
 	resolver := r.Mutation()
 	from := "testSourceA"

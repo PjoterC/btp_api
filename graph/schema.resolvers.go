@@ -14,7 +14,7 @@ import (
 // Transfer is the resolver for the transfer field.
 func (r *mutationResolver) Transfer(ctx context.Context, fromAddress string, toAddress string, amount int32) (int32, error) {
 	if amount <= 0 {
-		return 0, errors.New("amount must be positive")
+		return 0, errors.New("Amount must be positive")
 	}
 
 	tx, err := r.DB.Beginx()
@@ -27,12 +27,12 @@ func (r *mutationResolver) Transfer(ctx context.Context, fromAddress string, toA
 	var fromBalance int32
 	err = tx.Get(&fromBalance, "SELECT balance FROM wallets WHERE address = $1 FOR UPDATE", fromAddress)
 	if err != nil {
-		return 0, errors.New("sender wallet not found")
+		return 0, errors.New("Sender wallet not found")
 	}
 
 	// 2. Check sufficiency
 	if fromBalance < amount {
-		return 0, errors.New("insufficient balance")
+		return 0, errors.New("Insufficient balance")
 	}
 
 	// 3. Ensure 'to' wallet exists — return error if missing
@@ -40,7 +40,7 @@ func (r *mutationResolver) Transfer(ctx context.Context, fromAddress string, toA
 	err = tx.Get(&toBalance, "SELECT balance FROM wallets WHERE address = $1 FOR UPDATE", toAddress)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, errors.New("recipient wallet not found")
+			return 0, errors.New("Recipient wallet not found")
 		}
 		return 0, err
 	}

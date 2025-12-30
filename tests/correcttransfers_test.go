@@ -6,18 +6,15 @@ import (
 	"testing"
 
 	"github.com/PjoterC/btp_api/graph"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
 // The test performs a valid transfer and checks for success.
 func TestValidTransfer(t *testing.T) {
 	ResetTestWallets()
-	db, dberr := sqlx.Open("postgres", "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable")
-	if dberr != nil {
-		t.Fatalf("Failed to connect to database: %v", dberr)
-	}
-	defer db.Close()
+	db, cleanup := SetupDB(t)
+	defer cleanup()
+
 	r := &graph.Resolver{DB: db}
 	resolver := r.Mutation()
 
@@ -40,13 +37,11 @@ func TestValidTransfer(t *testing.T) {
 	}
 }
 
+// The test attempts to perform two simultaneous valid transfers and checks for success.
 func TestSimultanous(t *testing.T) {
 	ResetTestWallets()
-	db, dberr := sqlx.Open("postgres", "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable")
-	if dberr != nil {
-		t.Fatalf("Failed to connect to database: %v", dberr)
-	}
-	defer db.Close()
+	db, cleanup := SetupDB(t)
+	defer cleanup()
 	r := &graph.Resolver{DB: db}
 	resolver := r.Mutation()
 

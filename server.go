@@ -23,7 +23,7 @@ func main() {
 	if port == "" {
 		port = defaultPort
 	}
-	dbURL := os.Getenv("DATABASE_URL")
+	dbURL := os.Getenv("DATABASE_URL") //or anything else
 	if dbURL == "" {
 		dbURL = "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable"
 	}

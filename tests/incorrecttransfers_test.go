@@ -14,7 +14,11 @@ import (
 // The test attempts to perform two simultaneous transfers that together exceed the source wallet's balance.
 func TestSimultanousOverBalance(t *testing.T) {
 	ResetTestWallets()
-	db, _ := sqlx.Open("postgres", "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable")
+	db, err := sqlx.Open("postgres", "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable")
+	if err != nil {
+		t.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
 	r := &graph.Resolver{DB: db}
 	resolver := r.Mutation()
 
@@ -34,6 +38,7 @@ func TestSimultanousOverBalance(t *testing.T) {
 			_, err := resolver.Transfer(context.Background(), from, to, 600)
 			if err != nil {
 				errs <- err
+				t.Logf("Transfer resulted in error: %v", err)
 			}
 		}()
 	}
@@ -47,13 +52,14 @@ func TestSimultanousOverBalance(t *testing.T) {
 	}
 
 	// Verify final balance is 400 (1000 - 600)
-	var finalBalance int
+	var finalBalance int32
 	db.Get(&finalBalance, "SELECT balance FROM wallets WHERE address = $1", from)
 	if finalBalance != 400 {
 		t.Errorf("Expected balance 400, got %d", finalBalance)
 	}
 }
 
+// The test performs three transfers in parallel, with one of them potetially fauling due to insufficient funds - an implementation of the example from the task sheet.
 func TestExampleRaceCondition(t *testing.T) {
 	ResetTestWallets()
 	db, err := sqlx.Open("postgres", "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable")
@@ -113,7 +119,77 @@ func TestExampleRaceCondition(t *testing.T) {
 	if len(actualErrors) != 1 && len(actualErrors) != 0 {
 		t.Errorf("Expected 1 or 0 errors (insufficient funds), but got %d errors: %v", len(actualErrors), actualErrors)
 	}
-	var finalBalance int
+	var finalBalance int32
 	db.Get(&finalBalance, "SELECT balance FROM wallets WHERE address = $1", fromB)
 	t.Logf("Final balance of %s is %d", fromB, finalBalance)
+}
+
+// The test attempts to perform transfers involving non-existing wallets
+func TestNonExistingWallets(t *testing.T) {
+	ResetTestWallets()
+	db, err := sqlx.Open("postgres", "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable")
+	if err != nil {
+		t.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+	r := &graph.Resolver{DB: db}
+	resolver := r.Mutation()
+
+	fromreal := "testSourceA"
+	toreal := "testDestA"
+	frombogus := "nonExistingSource"
+	tobogus := "nonExistingDest"
+	transfers := []struct {
+		from string
+		to   string
+	}{
+		{fromreal, tobogus},
+		{frombogus, toreal},
+		{fromreal, toreal}, //control
+	}
+
+	//Use a WaitGroup for ALL goroutines
+	var wg sync.WaitGroup
+	//Buffer the channel to match the number of goroutines to avoid blocking
+	errs := make(chan error, 2)
+	for _, tr := range transfers {
+		wg.Add(1)
+		go func(src, dest string) {
+			defer wg.Done()
+			_, err := resolver.Transfer(context.Background(), src, dest, 10)
+			if err != nil {
+				errs <- err
+				t.Logf("Transfer resulted in error: %v - expected result", err)
+			}
+		}(tr.from, tr.to)
+	}
+
+	wg.Wait()
+	close(errs)
+
+	// Verify that exactly two failed
+	if len(errs) != 2 {
+		t.Errorf("Expected exactly 2 errors, got %d", len(errs))
+	}
+
+}
+
+// The test attempts to perform a transfer with a negative amount
+func TestNegativeAmount(t *testing.T) {
+	ResetTestWallets()
+	db, dberr := sqlx.Open("postgres", "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable")
+	if dberr != nil {
+		t.Fatalf("Failed to connect to database: %v", dberr)
+	}
+	r := &graph.Resolver{DB: db}
+	resolver := r.Mutation()
+	from := "testSourceA"
+	to := "testDestA"
+	_, err := resolver.Transfer(context.Background(), from, to, -100)
+
+	if err == nil {
+		t.Errorf("Expected error for negative transfer amount, got successful transfer")
+	} else {
+		t.Logf("Received expected error for negative transfer amount: %v", err)
+	}
 }

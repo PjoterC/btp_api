@@ -34,14 +34,18 @@ func ResetTestWallets() {
 		{"testSourceB", 10},
 	} // Add more test wallets here if needed
 	for _, w := range wallets {
-		_, err := db.Exec(`
-			INSERT INTO wallets (address, balance)
-			VALUES ($1, $2)
-			ON CONFLICT (address) DO UPDATE SET balance = EXCLUDED.balance;
-		`, w.Address, w.Balance)
-		if err != nil {
-			panic(err)
-		}
+		AddWallet(w.Address, w.Balance, db)
 	}
 
+}
+
+func AddWallet(address string, balance int32, db *sqlx.DB) {
+	_, err := db.Exec(`
+		INSERT INTO wallets (address, balance)
+		VALUES ($1, $2)
+		ON CONFLICT (address) DO UPDATE SET balance = EXCLUDED.balance;
+	`, address, balance)
+	if err != nil {
+		panic(err)
+	}
 }

@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/PjoterC/btp_api/graph"
+	"github.com/PjoterC/btp_api/helpers"
 	_ "github.com/lib/pq"
 )
 
 // The test attempts to perform two simultaneous transfers that together exceed the source wallet's balance.
 func TestSimultanousOverBalance(t *testing.T) {
-	ResetTestWallets()
-	db, cleanup := SetupDB(t)
+	helpers.ResetTestWallets()
+	db, cleanup := helpers.SetupDB(t)
 	defer cleanup()
 	r := &graph.Resolver{DB: db}
 	resolver := r.Mutation()
@@ -57,8 +58,8 @@ func TestSimultanousOverBalance(t *testing.T) {
 
 // The test performs three transfers in parallel, with one of them potetially fauling due to insufficient funds - an implementation of the example from the task sheet.
 func TestExampleRaceCondition(t *testing.T) {
-	ResetTestWallets()
-	db, cleanup := SetupDB(t)
+	helpers.ResetTestWallets()
+	db, cleanup := helpers.SetupDB(t)
 	defer cleanup()
 
 	r := &graph.Resolver{DB: db}
@@ -119,8 +120,8 @@ func TestExampleRaceCondition(t *testing.T) {
 
 // The test attempts to perform transfers involving non-existing wallets
 func TestNonExistingWallets(t *testing.T) {
-	ResetTestWallets()
-	db, cleanup := SetupDB(t)
+	helpers.ResetTestWallets()
+	db, cleanup := helpers.SetupDB(t)
 	defer cleanup()
 
 	r := &graph.Resolver{DB: db}
@@ -167,8 +168,8 @@ func TestNonExistingWallets(t *testing.T) {
 
 // The test attempts to perform a transfer with a negative amount
 func TestNegativeAmount(t *testing.T) {
-	ResetTestWallets()
-	db, cleanup := SetupDB(t)
+	helpers.ResetTestWallets()
+	db, cleanup := helpers.SetupDB(t)
 	defer cleanup()
 	r := &graph.Resolver{DB: db}
 	resolver := r.Mutation()

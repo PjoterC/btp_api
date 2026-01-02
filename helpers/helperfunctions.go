@@ -1,4 +1,4 @@
-package tests
+package helpers
 
 import (
 	"testing"
@@ -34,12 +34,13 @@ func ResetTestWallets() {
 		{"testSourceB", 10},
 	} // Add more test wallets here if needed
 	for _, w := range wallets {
-		AddWallet(w.Address, w.Balance, db)
+		AddOrUpdateWallet(w.Address, w.Balance, db)
 	}
 
 }
 
-func AddWallet(address string, balance int32, db *sqlx.DB) {
+// Helper to add or update a wallet in the database - if it exists, update balance; if not, create it
+func AddOrUpdateWallet(address string, balance int32, db *sqlx.DB) {
 	_, err := db.Exec(`
 		INSERT INTO wallets (address, balance)
 		VALUES ($1, $2)

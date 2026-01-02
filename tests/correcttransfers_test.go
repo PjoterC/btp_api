@@ -6,13 +6,14 @@ import (
 	"testing"
 
 	"github.com/PjoterC/btp_api/graph"
+	"github.com/PjoterC/btp_api/helpers"
 	_ "github.com/lib/pq"
 )
 
 // The test performs a valid transfer and checks for success.
 func TestValidTransfer(t *testing.T) {
-	ResetTestWallets()
-	db, cleanup := SetupDB(t)
+	helpers.ResetTestWallets()
+	db, cleanup := helpers.SetupDB(t)
 	defer cleanup()
 
 	r := &graph.Resolver{DB: db}
@@ -39,8 +40,8 @@ func TestValidTransfer(t *testing.T) {
 
 // The test attempts to perform two simultaneous valid transfers and checks for success.
 func TestSimultanous(t *testing.T) {
-	ResetTestWallets()
-	db, cleanup := SetupDB(t)
+	helpers.ResetTestWallets()
+	db, cleanup := helpers.SetupDB(t)
 	defer cleanup()
 	r := &graph.Resolver{DB: db}
 	resolver := r.Mutation()

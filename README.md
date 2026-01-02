@@ -9,7 +9,9 @@ The API implements a `transfer` mutation to send tokens from one wallet to anoth
 The transfer mutation schema is as follows:
 transfer(from_address: String!, to_address: String!, amount: Int!): Int!
 
-## Installation and running the api (Docker required)
+After a successful transfer, the amount of tokens remaining on the source wallet will be returned.
+
+## Installation and running the api (Docker and go language required)
 
 After cloning or downloading the repository, run the command line inside the `BTP_API` directory. First create the container for the database, from the docker-compose file by using the `docker-compose up -d` command in the command line. After pulling the postgres image, a container should be created and automatically run. (NOTE - container is made to restart automatically whenever possible. To change this, edit the docker-compose "restart" section.)
 

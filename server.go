@@ -11,7 +11,9 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/PjoterC/btp_api/graph"
+	"github.com/PjoterC/btp_api/helpers"
 	"github.com/jmoiron/sqlx"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -19,29 +21,26 @@ import (
 const defaultPort = "8080"
 
 func main() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = defaultPort
 	}
-	dbURL := os.Getenv("DATABASE_URL") //or anything else
+	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable"
+		log.Fatal("DATABASE_URL not set in environment")
 	}
 
 	db, err := sqlx.Connect("postgres", dbURL)
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	db.MustExec(`
-		CREATE TABLE IF NOT EXISTS wallets (
-			address TEXT PRIMARY KEY,
-			balance INTEGER NOT NULL CHECK (balance >= 0)
-		);
-		INSERT INTO wallets (address, balance) 
-		VALUES ('0x0000000000000000000000000000000000000000', 1000000)
-		ON CONFLICT DO NOTHING;
-	`)
+	dbmpath := "file://migrations"
+	helpers.RunMigrations(db.DB, dbmpath)
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{DB: db}}))
 

@@ -1,15 +1,50 @@
 package helpers
 
 import (
+	"database/sql"
+	"log"
+	"os"
 	"testing"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
-// Helper to setup DB and cleanup for each test
+func RunMigrations(db *sql.DB, path string) {
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(path, "postgres", driver)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = m.Up()
+	if err == migrate.ErrNoChange {
+		log.Println("No new migrations to apply. Database is up to date.")
+	} else if err != nil {
+		log.Fatal("Migration failed:", err)
+	} else {
+		log.Println("Migrations applied successfully!")
+	}
+}
+
+// Helper to setup DB connection and cleanup for each test
 func SetupDB(t *testing.T) (*sqlx.DB, func()) {
-	db, err := sqlx.Open("postgres", "postgres://user:password@localhost:5432/btp_tokens?sslmode=disable")
+	err := godotenv.Load("../.env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL not set in environment")
+	}
+	db, err := sqlx.Open("postgres", dbURL)
 	if err != nil {
 		t.Fatalf("Failed to connect to DB: %v", err)
 	}
@@ -23,6 +58,8 @@ func SetupDB(t *testing.T) (*sqlx.DB, func()) {
 // Helper to reset test wallets before each test
 func ResetTestWallets() {
 	db, cleanup := SetupDB(nil)
+	dbmpath := "file://../migrations"
+	RunMigrations(db.DB, dbmpath)
 	defer cleanup()
 
 	wallets := []struct {

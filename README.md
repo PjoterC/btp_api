@@ -17,7 +17,7 @@ After cloning or downloading the repository, run the command line inside the `BT
 
 To use the server application, simply enter `go build server.go` and then run the created executable. Provided the database is running, the server should create the initial table for wallets, with the starting wallet as specified by the task requirements.
 
-Both server and database are running on localhost, database on port 5432, while server on port 8080.
+Both server and database are running on localhost, database on port 5432, while server on port 8080. Ports can be changed in docker-compose and .env file.
 
 ## Using the API
 
@@ -40,7 +40,7 @@ mutation {
 } 
 //example of incorrect transfer - can only transfer positive amount of tokens
 
-`NOTE: Since the task specifies only one existing wallet at the beginning, when checking transfers between different wallets, you either need to add them manually to the database or use testing wallets, which (re)generate when running any test. More on tests in 🗀/tests/TEST_INSTRUCTIONS.md`
+`More information about automated tests in 🗀/tests/TEST_INSTRUCTIONS.md`
 
 
 Alternatively, one can use a web communication tools like Postman, Thunder Client or curl(NOT RECOMMENDED) to send a GraphQL request to the http://localhost:8080/query directly. Most clients have built-in GraphQL editors, so the syntax of the query is identical to the one used in the GraphQL playground.

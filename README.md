@@ -3,7 +3,7 @@
 A GraphQL API for transferring tokens between virtual wallets, using the gqlgen package. 
 The API implements a `transfer` mutation to send tokens from one wallet to another. The conditions of successful transfer are:
 - Balance check - balance of the sending wallet after transfer must not be negative.
-- Both sender and receiver wallet addresses must exist in the database.
+- Sender wallet must exist in the database.
 - Transfer amount must be at least 1 token or more.
 
 The transfer mutation schema is as follows:

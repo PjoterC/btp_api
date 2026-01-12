@@ -22,7 +22,7 @@ These tests "expect failure", meaning that the tests can be successful even if a
 
 - TestExampleRaceCondition -  The test performs three transfers in parallel, with one of them potentially failing due to insufficient funds - an implementation of the example from the task sheet.
 
-- TestNonExistingWallets - The test attempts to perform transfers involving non-existing wallets. Test is successful if the transfers with non-existing wallets fail.
+- TestNonExistingWallets - The test attempts to perform transfers involving non-existing wallets. Test is successful if the transfer with non-existing source wallet fails.
 
 - TestNegativeAmount - The test attempts to perform a transfer with a negative amount. Test is successful if transfer fails.
 

@@ -73,6 +73,14 @@ func ResetTestWallets() {
 	for _, w := range wallets {
 		AddOrUpdateWallet(w.Address, w.Balance, db)
 	}
+	// Clean up any wallets that might have been added during tests
+	_, err := db.Exec(`
+		DELETE FROM wallets WHERE address IN ('nonExistingDest');
+	`)
+
+	if err != nil {
+		log.Fatalf("Failed to clean up wallets: %v", err)
+	}
 
 }
 

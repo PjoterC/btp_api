@@ -82,3 +82,50 @@ func TestSimultanous(t *testing.T) {
 		t.Errorf("Expected balance 400, got %d", finalBalance)
 	}
 }
+
+// The test attempts to perform three simultaneous transfers, to check for deadlock prevention.
+func TestDeadlock(t *testing.T) {
+	helpers.ResetTestWallets()
+	db, cleanup := helpers.SetupDB(t)
+	defer cleanup()
+	r := &graph.Resolver{DB: db}
+	resolver := r.Mutation()
+
+	from := "testSourceA"
+	to := "testSourceB"
+
+	//Use a WaitGroup for ALL goroutines
+	transfers := []struct {
+		from string
+		to   string
+	}{
+		{from, from},
+		{from, to},
+		{to, from},
+	}
+
+	//Use a WaitGroup for ALL goroutines
+	var wg sync.WaitGroup
+	//Buffer the channel to match the number of goroutines to avoid blocking
+	errs := make(chan error, 2)
+	for _, tr := range transfers {
+		wg.Add(1)
+		go func(src, dest string) {
+			defer wg.Done()
+			_, err := resolver.Transfer(context.Background(), src, dest, 10)
+			if err != nil {
+				errs <- err
+				t.Logf("Transfer from %s to %s resulted in error: %v", src, dest, err)
+			}
+		}(tr.from, tr.to)
+	}
+
+	wg.Wait()
+	close(errs)
+
+	// Verify that no errors occurred
+	if len(errs) != 0 {
+		t.Errorf("Expected no errors, got %d", len(errs))
+	}
+
+}

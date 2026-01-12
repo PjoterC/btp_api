@@ -7,7 +7,6 @@ package graph
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 )
 
@@ -23,29 +22,62 @@ func (r *mutationResolver) Transfer(ctx context.Context, fromAddress string, toA
 	}
 	defer tx.Rollback()
 
-	// 1. Lock the sender row and get balance
-	var fromBalance int32
-	err = tx.Get(&fromBalance, "SELECT balance FROM wallets WHERE address = $1 FOR UPDATE", fromAddress)
-	if err != nil {
-		return 0, errors.New("Sender wallet not found")
+	// If transferring to self, just check balance and return it
+	if fromAddress == toAddress {
+		var balance int32
+		err = tx.Get(&balance, "SELECT balance FROM wallets WHERE address = $1 FOR UPDATE", fromAddress)
+		if err != nil {
+			return 0, errors.New("Wallet not found")
+		}
+		if balance < amount {
+			return 0, errors.New("Insufficient balance")
+		}
+		return balance, nil
 	}
 
-	// 2. Check sufficiency
+	// Lock wallets alphabetically to prevent deadlocks
+	firstLock := fromAddress
+	secondLock := toAddress
+
+	if fromAddress > toAddress {
+		firstLock = toAddress
+		secondLock = fromAddress
+	}
+	var temp int32
+	var fromBalance int32
+	var errFirst, errSecond error
+
+	errFirst = tx.Get(&temp, "SELECT balance FROM wallets WHERE address = $1 FOR UPDATE", firstLock)
+	if firstLock == fromAddress {
+		fromBalance = temp
+	}
+	errSecond = tx.Get(&temp, "SELECT balance FROM wallets WHERE address = $1 FOR UPDATE", secondLock)
+	if secondLock == fromAddress {
+		fromBalance = temp
+	}
+
+	// Check if sender wallet exists and has sufficient balance
+	if firstLock == fromAddress && errFirst != nil || secondLock == fromAddress && errSecond != nil {
+		return 0, errors.New("Sender wallet not found")
+	}
 	if fromBalance < amount {
 		return 0, errors.New("Insufficient balance")
 	}
 
-	// 3. Ensure 'to' wallet exists — return error if missing
-	var toBalance int32
-	err = tx.Get(&toBalance, "SELECT balance FROM wallets WHERE address = $1 FOR UPDATE", toAddress)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return 0, errors.New("Recipient wallet not found")
+	// If destination wallet does not exist, create it
+	if errFirst != nil && firstLock == toAddress {
+		_, err = tx.Exec("INSERT INTO wallets (address, balance) VALUES ($1, $2)", firstLock, 0)
+		if err != nil {
+			return 0, err
 		}
-		return 0, err
+	}
+	if errSecond != nil && secondLock == toAddress {
+		_, err = tx.Exec("INSERT INTO wallets (address, balance) VALUES ($1, $2)", secondLock, 0)
+		if err != nil {
+			return 0, err
+		}
 	}
 
-	// 4. Update balances
 	newSenderBalance := fromBalance - amount
 	_, err = tx.Exec("UPDATE wallets SET balance = balance - $1 WHERE address = $2", amount, fromAddress)
 	if err != nil {

@@ -159,9 +159,9 @@ func TestNonExistingWallets(t *testing.T) {
 	wg.Wait()
 	close(errs)
 
-	// Verify that exactly two failed
-	if len(errs) != 2 {
-		t.Errorf("Expected exactly 2 errors, got %d", len(errs))
+	// Verify that exactly one failed
+	if len(errs) != 1 {
+		t.Errorf("Expected exactly 1 errors, got %d", len(errs))
 	}
 
 }

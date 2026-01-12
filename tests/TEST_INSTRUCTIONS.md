@@ -13,7 +13,7 @@ These tests expect successful transfers and valid state of the wallets in the da
 
 - TestValidTransfer - The test performs a valid transfer and checks for success.
 - TestSimultanous - The test attempts to perform two simultaneous valid transfers and checks for success.
-
+- TestDeadlock - The test performs transfers to check whether wallets can simultanously transfer to each other, without causing deadlock.
 
 ### Incorrect transfers
 These tests "expect failure", meaning that the tests can be successful even if an error occurs, provided it is within the expected range and the reason for transfer failure is valid.

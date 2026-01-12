@@ -12,7 +12,9 @@ To run the tests, run command line in this directory and type `go test ./.`, whi
 These tests expect successful transfers and valid state of the wallets in the database at the end.
 
 - TestValidTransfer - The test performs a valid transfer and checks for success.
+
 - TestSimultanous - The test attempts to perform two simultaneous valid transfers and checks for success.
+
 - TestDeadlock - The test performs transfers to check whether wallets can simultanously transfer to each other, without causing deadlock.
 
 ### Incorrect transfers

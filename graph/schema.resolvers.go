@@ -28,7 +28,7 @@ func (r *mutationResolver) Transfer(ctx context.Context, fromAddress string, toA
         ON CONFLICT (address) DO UPDATE SET address = EXCLUDED.address
         RETURNING balance`
 
-	// 2. Handle Self-Transfer
+	// Handle Self-Transfer
 	if fromAddress == toAddress {
 		var balance int32
 		err := tx.GetContext(ctx, &balance, upsertStmt, fromAddress)

@@ -101,8 +101,8 @@ func TestDeadlock(t *testing.T) {
 	}{
 		{from, to},
 		{to, from},
-		{from, to},
-		{to, from},
+		{from, "nonExistingDest"},
+		{to, "nonExistingDest"},
 	}
 
 	//Use a WaitGroup for ALL goroutines

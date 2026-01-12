@@ -13,69 +13,50 @@ import (
 // Transfer is the resolver for the transfer field.
 func (r *mutationResolver) Transfer(ctx context.Context, fromAddress string, toAddress string, amount int32) (int32, error) {
 	if amount <= 0 {
-		return 0, errors.New("Amount must be positive")
+		return 0, errors.New("amount must be positive")
 	}
 
-	tx, err := r.DB.Beginx()
+	tx, err := r.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback()
 
-	// If transferring to self, just check balance and return it
+	// This locks existing rows AND creates/locks new ones in one go.
+	upsertStmt := `
+        INSERT INTO wallets (address, balance) VALUES ($1, 0)
+        ON CONFLICT (address) DO UPDATE SET address = EXCLUDED.address
+        RETURNING balance`
+
+	// 2. Handle Self-Transfer
 	if fromAddress == toAddress {
 		var balance int32
-		err = tx.Get(&balance, "SELECT balance FROM wallets WHERE address = $1 FOR UPDATE", fromAddress)
+		err := tx.GetContext(ctx, &balance, upsertStmt, fromAddress)
 		if err != nil {
-			return 0, errors.New("Wallet not found")
+			return 0, err
 		}
-		if balance < amount {
-			return 0, errors.New("Insufficient balance")
-		}
-		return balance, nil
+		return balance, tx.Commit()
 	}
 
 	// Lock wallets alphabetically to prevent deadlocks
-	firstLock := fromAddress
-	secondLock := toAddress
-
+	addrs := []string{fromAddress, toAddress}
 	if fromAddress > toAddress {
-		firstLock = toAddress
-		secondLock = fromAddress
+		addrs[0], addrs[1] = addrs[1], addrs[0]
 	}
-	var temp int32
 	var fromBalance int32
-	var errFirst, errSecond error
+	for _, addr := range addrs {
+		var bal int32
+		if err := tx.GetContext(ctx, &bal, upsertStmt, addr); err != nil {
+			return 0, err
+		}
+		if addr == fromAddress {
+			fromBalance = bal
+		}
+	}
 
-	errFirst = tx.Get(&temp, "SELECT balance FROM wallets WHERE address = $1 FOR UPDATE", firstLock)
-	if firstLock == fromAddress {
-		fromBalance = temp
-	}
-	errSecond = tx.Get(&temp, "SELECT balance FROM wallets WHERE address = $1 FOR UPDATE", secondLock)
-	if secondLock == fromAddress {
-		fromBalance = temp
-	}
-
-	// Check if sender wallet exists and has sufficient balance
-	if firstLock == fromAddress && errFirst != nil || secondLock == fromAddress && errSecond != nil {
-		return 0, errors.New("Sender wallet not found")
-	}
+	// Check sufficient balance
 	if fromBalance < amount {
-		return 0, errors.New("Insufficient balance")
-	}
-
-	// If destination wallet does not exist, create it
-	if errFirst != nil && firstLock == toAddress {
-		_, err = tx.Exec("INSERT INTO wallets (address, balance) VALUES ($1, $2)", firstLock, 0)
-		if err != nil {
-			return 0, err
-		}
-	}
-	if errSecond != nil && secondLock == toAddress {
-		_, err = tx.Exec("INSERT INTO wallets (address, balance) VALUES ($1, $2)", secondLock, 0)
-		if err != nil {
-			return 0, err
-		}
+		return 0, errors.New("insufficient balance")
 	}
 
 	newSenderBalance := fromBalance - amount

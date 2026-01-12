@@ -83,7 +83,7 @@ func TestSimultanous(t *testing.T) {
 	}
 }
 
-// The test attempts to perform three simultaneous transfers, to check for deadlock prevention.
+// The test attempts to perform four simultaneous transfers, to check for deadlock prevention.
 func TestDeadlock(t *testing.T) {
 	helpers.ResetTestWallets()
 	db, cleanup := helpers.SetupDB(t)
@@ -99,7 +99,8 @@ func TestDeadlock(t *testing.T) {
 		from string
 		to   string
 	}{
-		{from, from},
+		{from, to},
+		{to, from},
 		{from, to},
 		{to, from},
 	}
@@ -107,12 +108,12 @@ func TestDeadlock(t *testing.T) {
 	//Use a WaitGroup for ALL goroutines
 	var wg sync.WaitGroup
 	//Buffer the channel to match the number of goroutines to avoid blocking
-	errs := make(chan error, 2)
+	errs := make(chan error, len(transfers))
 	for _, tr := range transfers {
 		wg.Add(1)
 		go func(src, dest string) {
 			defer wg.Done()
-			_, err := resolver.Transfer(context.Background(), src, dest, 10)
+			_, err := resolver.Transfer(context.Background(), src, dest, 1)
 			if err != nil {
 				errs <- err
 				t.Logf("Transfer from %s to %s resulted in error: %v", src, dest, err)

@@ -71,8 +71,6 @@ func TestExampleRaceCondition(t *testing.T) {
 
 	//Use a WaitGroup for ALL goroutines
 	var wg sync.WaitGroup
-	//Buffer the channel to match the number of goroutines to avoid blocking
-	errs := make(chan error, 3)
 
 	transfers := []struct {
 		from   string
@@ -83,6 +81,8 @@ func TestExampleRaceCondition(t *testing.T) {
 		{fromB, to, 4},
 		{fromB, to, 7},
 	}
+	//Buffer the channel to match the number of goroutines to avoid blocking
+	errs := make(chan error, len(transfers))
 
 	for _, tr := range transfers {
 		wg.Add(1)
@@ -143,7 +143,7 @@ func TestNonExistingWallets(t *testing.T) {
 	//Use a WaitGroup for ALL goroutines
 	var wg sync.WaitGroup
 	//Buffer the channel to match the number of goroutines to avoid blocking
-	errs := make(chan error, 2)
+	errs := make(chan error, len(transfers))
 	for _, tr := range transfers {
 		wg.Add(1)
 		go func(src, dest string) {
